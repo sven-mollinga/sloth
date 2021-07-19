@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sloth
+  namespace: {{ .Values.sloth.namespace }}
+  labels:
+    app: sloth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sloth
+  template:
+    metadata:
+      labels:
+        app: sloth
+      annotations:
+        kubectl.kubernetes.io/default-container: sloth
+    spec:
+      serviceAccountName: sloth
+      containers:
+        - name: sloth
+          image: slok/sloth:v0.6.0
+          args:
+            - kubernetes-controller
+            {{- if .Values.sloth.enablePlugins }}
+            - --resync-interval=3m
+            - --sli-plugins-path=/plugins
+            {{ end }}
+          ports:
+            - containerPort: 8081
+              name: metrics
+              protocol: TCP
+      {{- if .Values.sloth.enablePlugins }}
+          volumeMounts:
+            - name: sloth-common-sli-plugins
+              mountPath: /plugins/sloth-common-sli-plugins
+        - name: git-sync-plugins
+          image: k8s.gcr.io/git-sync/git-sync:v3.3.4
+          args:
+            - --repo=https://github.com/slok/sloth-common-sli-plugins
+            - --branch=main
+            - --wait=30
+            - --webhook-url=http://localhost:8082/-/reload
+          volumeMounts:
+            - name: sloth-common-sli-plugins
+              # Default path for git-sync.
+              mountPath: /tmp/git
+      volumes:
+        - name: sloth-common-sli-plugins
+          emptyDir: {}
+      {{ end }}

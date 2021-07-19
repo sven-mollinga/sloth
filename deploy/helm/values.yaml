@@ -1,0 +1,5 @@
+sloth:
+  name: sloth
+  namespace: monitoring
+  image: slok/sloth:v0.6.0
+  enablePlugins: true
